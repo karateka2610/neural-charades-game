@@ -22,8 +22,10 @@ app.use('/api', apiRoutes);
 const clientDistPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath));
 
-// Cualquier otra ruta devuelve index.html (para React Router si se usara, o SPA default)
-app.get('*', (req, res) => {
+// Middleware Catch-All para SPA (Solución robusta para Express/Render)
+// En lugar de regex '*', usamos un handler genérico al final
+// para evitar problemas con versiones de path-to-regexp
+app.use((req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
