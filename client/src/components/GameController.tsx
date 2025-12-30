@@ -32,7 +32,24 @@ const GameController = ({ words, topic, onExit }: Props) => {
         await requestAccess();
     };
 
-    // Game Logic Loop
+    const [timeLeft, setTimeLeft] = useState(60);
+
+    // Timer Logic
+    useEffect(() => {
+        if (phase !== 'PLAYING') return;
+        if (timeLeft <= 0) {
+            setPhase('FINISHED');
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeLeft(t => t - 1);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [phase, timeLeft]);
+
+    // Game Logic Loop (Gyro)
     useEffect(() => {
         if (phase !== 'PLAYING') return;
         if (cardStatus !== 'NEUTRAL') return; // Wait for animation reset
@@ -42,24 +59,13 @@ const GameController = ({ words, topic, onExit }: Props) => {
 
         const { gamma } = orientation;
 
-        // Thresholds for tilt
-        // Assuming Landscape Mode:
-        // Neutral: Gamma ~ 0 (if holding vertical) NO, wait.
-        // Screen Face Up (on table): Gamma 0, Beta 0.
-        // Screen Face Vertical (on forehead): Gamma ~ -90 or 90 depending on rotation?
-        // Let's rely on Relative change or calibrate?
-        // SIMPLIFICATION: We use the emulated values or standard web behavior.
-        // Key emulated: Correct = -80 (Gamma), Pass = 80 (Gamma).
-        // Let's assume standard behavior:
-        // Tilt Back (Ceiling): Gamma decreases (negative)
-        // Tilt Forward (Floor): Gamma increases (positive)
-
         if (gamma && gamma < -50) {
             handleAnswer('PASS');
         } else if (gamma && gamma > 50) {
             handleAnswer('CORRECT');
         }
     }, [phase, orientation, cardStatus, lastActionTime]);
+
 
     const handleAnswer = useCallback((status: 'CORRECT' | 'PASS') => {
         setCardStatus(status);
@@ -149,6 +155,10 @@ const GameController = ({ words, topic, onExit }: Props) => {
                     <div className="absolute top-6 left-6 font-game text-2xl opacity-80">
                         {currentIndex + 1} / {words.length}
                     </div>
+                    {/* TIMER */}
+                    <div className={`absolute top-6 font-game text-4xl drop-shadow-md transition-colors ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                        {timeLeft}s
+                    </div>
                     <div className="absolute top-6 right-6 font-game text-2xl opacity-80">
                         PUNTOS: {score}
                     </div>
@@ -177,6 +187,7 @@ const GameController = ({ words, topic, onExit }: Props) => {
                         <button onClick={() => {
                             setCurrentIndex(0);
                             setScore(0);
+                            setTimeLeft(60); // Reset Timer
                             setPhase('INSTRUCTIONS');
                         }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition">
                             <RotateCcw />
