@@ -7,6 +7,16 @@ interface Props {
 }
 
 const MainMenu = ({ onStart }: Props) => {
+    // Función simple para barajar array (Fisher-Yates)
+    const shuffleArray = (array: string[]) => {
+        const newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    };
+
     return (
         <div className="flex flex-col items-center justify-center h-full bg-neutral-900 p-6 overflow-y-auto">
             <motion.div
@@ -40,7 +50,7 @@ const MainMenu = ({ onStart }: Props) => {
                             transition={{ delay: index * 0.1 }}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => onStart(preset.words, preset.name)}
+                            onClick={() => onStart(shuffleArray(preset.words), preset.name)}
                             className="bg-neutral-800/80 hover:bg-neutral-700/80 p-4 rounded-xl flex items-center justify-between border border-neutral-700 transition-colors group"
                         >
                             <span className="flex items-center gap-3 text-lg font-medium text-white">
