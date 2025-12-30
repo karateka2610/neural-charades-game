@@ -59,9 +59,21 @@ const GameController = ({ words, topic, onExit }: Props) => {
 
         const { gamma } = orientation;
 
-        if (gamma && gamma < -50) {
+        if (gamma === null) return;
+
+        const absGamma = Math.abs(gamma);
+
+        // Lógica para Modo Paisaje (Landscape)
+        // Neutro (Frente): Gamma ~ 90 o -90 (Vertical)
+        // Arriba (Techo): Gamma tiende a 0 (Plano hacia arriba) -> PASAR
+        // Abajo (Suelo): Gamma tiende a 180 (Plano hacia abajo) -> CORRECTO
+
+        // Zona de activación: < 30 grados (Techo) o > 150 grados (Suelo)
+        // Zona neutra implícita: entre 30 y 150 (Vertical)
+
+        if (absGamma < 35) {
             handleAnswer('PASS');
-        } else if (gamma && gamma > 50) {
+        } else if (absGamma > 145) {
             handleAnswer('CORRECT');
         }
     }, [phase, orientation, cardStatus, lastActionTime]);
