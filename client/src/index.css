@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+    --font-game: 'Impact', 'Anton', sans-serif;
+    --font-sans: 'Inter', sans-serif;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap');
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #1a1a1a;
+    color: white;
+}
