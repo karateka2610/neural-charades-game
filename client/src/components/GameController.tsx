@@ -57,24 +57,30 @@ const GameController = ({ words, topic, onExit }: Props) => {
         const now = Date.now();
         if (now - lastActionTime < 1000) return; // Debounce
 
-        const { gamma } = orientation;
+        const { gamma, beta } = orientation;
 
-        if (gamma === null) return;
+        if (gamma === null || beta === null) return;
 
         const absGamma = Math.abs(gamma);
+        const absBeta = Math.abs(beta);
 
-        // Lógica para Modo Paisaje (Landscape)
-        // Neutro (Frente): Gamma ~ 90 o -90 (Vertical)
-        // Arriba (Techo): Gamma tiende a 0 (Plano hacia arriba) -> PASAR
-        // Abajo (Suelo): Gamma tiende a 180 (Plano hacia abajo) -> CORRECTO
+        // Lógica Robusta:
+        // 1. Detectar si estamos en posición "horizontal" (Gamma bajo).
+        // 2. Usar Beta para saber si es cara arriba o cara abajo.
 
-        // Zona de activación: < 30 grados (Techo) o > 150 grados (Suelo)
-        // Zona neutra implícita: entre 30 y 150 (Vertical)
+        // Zona Neutra: Vertical (Gamma alto)
+        // Zona Activación: Horizontal (Gamma bajo)
 
-        if (absGamma < 35) {
-            handleAnswer('PASS');
-        } else if (absGamma > 145) {
-            handleAnswer('CORRECT');
+        if (absGamma < 40) {
+            // Estamos horizontales. Ahora miramos Beta.
+            // Beta ~ 0: Pantalla mirando al techo (Pass)
+            // Beta ~ 180: Pantalla mirando al suelo (Correct)
+
+            if (absBeta < 40) {
+                handleAnswer('PASS'); // Mirando al techo
+            } else if (absBeta > 140) {
+                handleAnswer('CORRECT'); // Mirando al suelo
+            }
         }
     }, [phase, orientation, cardStatus, lastActionTime]);
 
