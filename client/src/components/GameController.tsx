@@ -223,8 +223,9 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
 
     // Dynamic Font Sizing
     const getFontSize = (word: string) => {
-        if (word.length > 12) return 'text-5xl md:text-6xl';
-        if (word.length > 8) return 'text-6xl md:text-7xl';
+        // More aggressive sizing for mobile
+        if (word.length > 12) return 'text-4xl md:text-5xl';
+        if (word.length >= 8) return 'text-5xl md:text-6xl';
         return 'text-7xl md:text-8xl';
     };
 
@@ -311,7 +312,7 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             className="bg-white text-black rounded-3xl p-8 w-full max-w-lg aspect-[4/3] flex items-center justify-center shadow-2xl text-center"
                         >
-                            <h1 className={`${getFontSize(words[currentIndex])} font-game uppercase leading-none tracking-tighter break-words max-w-full`}>
+                            <h1 className={`${getFontSize(words[currentIndex])} font-game uppercase leading-none tracking-tighter break-words max-w-full text-wrap`}>
                                 {words[currentIndex]}
                             </h1>
                         </motion.div>
@@ -381,3 +382,5 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
         </div>
     );
 };
+
+export default GameController;
