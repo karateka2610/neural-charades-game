@@ -356,7 +356,7 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
 
                         {/* RESULTS LIST */}
                         <div className="flex-1 overflow-y-auto space-y-2 mb-6 pr-2">
-                            {results.map((res, idx) => (
+                            {results.map((res: GameResult, idx: number) => (
                                 <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${res.status === 'CORRECT' ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/10 border border-red-500/10 opacity-60'}`}>
                                     <span className="font-bold text-lg">{res.word}</span>
                                     {res.status === 'CORRECT' ? <Check className="text-green-400" /> : <X className="text-red-400" />}
