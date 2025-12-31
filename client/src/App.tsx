@@ -11,6 +11,7 @@ function App() {
   const [currentDeck, setCurrentDeck] = useState<string[]>([]);
   const [deckTopic, setDeckTopic] = useState<string>('');
   const [gameDuration, setGameDuration] = useState<number>(60);
+  const [playerNames, setPlayerNames] = useState<string[]>([]);
 
   const startGame = (words: string[], topic: string) => {
     setCurrentDeck(words);
@@ -33,6 +34,8 @@ function App() {
             }}
             gameDuration={gameDuration}
             setGameDuration={setGameDuration}
+            playerNames={playerNames}
+            setPlayerNames={setPlayerNames}
           />
         )}
         {gameState === 'CREATE_DECK' && (
@@ -47,6 +50,7 @@ function App() {
             topic={deckTopic}
             onExit={() => setGameState('MENU')}
             initialTime={gameDuration}
+            playerNames={playerNames}
           />
         )}
       </div>

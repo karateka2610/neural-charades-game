@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Home, Smartphone } from 'lucide-react';
+import { RotateCcw, Home, Smartphone, Check, X, User } from 'lucide-react';
 import { useGyroscope } from '../hooks/useGyroscope';
 
 interface Props {
@@ -8,18 +8,44 @@ interface Props {
     topic: string;
     onExit: () => void;
     initialTime: number;
+    playerNames: string[];
 }
 
 type GamePhase = 'PERMISSION' | 'INSTRUCTIONS' | 'PLAYING' | 'FINISHED';
 type CardStatus = 'NEUTRAL' | 'CORRECT' | 'PASS';
 
-const GameController = ({ words, topic, onExit, initialTime }: Props) => {
+interface GameResult {
+    word: string;
+    status: 'CORRECT' | 'PASS';
+}
+
+const GameController = ({ words, topic, onExit, initialTime, playerNames }: Props) => {
     const { orientation, permission, requestAccess } = useGyroscope();
     const [phase, setPhase] = useState<GamePhase>('PERMISSION');
     const [currentIndex, setCurrentIndex] = useState(0);
     const [score, setScore] = useState(0);
+    const [results, setResults] = useState<GameResult[]>([]);
     const [cardStatus, setCardStatus] = useState<CardStatus>('NEUTRAL');
     const [lastActionTime, setLastActionTime] = useState(0);
+
+    // Determines current actor based on round index if names exist
+    // Each game session is one turn? Or rotation happens within game?
+    // Let's assume the game is for ONE actor. The actor is the one holding the phone.
+    // If we want rotation, we need to know WHICH game number this is? 
+    // Or simpler: We display WHO should hold the phone at the start?
+    // Let's pick a random player or next in sequence?
+    // For simplicity: Just pick a random player name to display as "Actor" if available.
+    // OR: Assume user wants to say "Turno de X". 
+    // Let's pick a random one for now to keep it stateless between matches unless we lift state.
+    // Actually, simple standard: Pick random name at start.
+    const [currentActor, setCurrentActor] = useState('');
+
+    useEffect(() => {
+        if (playerNames.length > 0) {
+            const random = playerNames[Math.floor(Math.random() * playerNames.length)];
+            setCurrentActor(random);
+        }
+    }, [playerNames]);
 
     // Initial permission check
     useEffect(() => {
@@ -88,17 +114,7 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
         const absBeta = Math.abs(beta);
 
         // Lógica Robusta:
-        // 1. Detectar si estamos en posición "horizontal" (Gamma bajo).
-        // 2. Usar Beta para saber si es cara arriba o cara abajo.
-
-        // Zona Neutra: Vertical (Gamma alto)
-        // Zona Activación: Horizontal (Gamma bajo)
-
         if (absGamma < 40) {
-            // Estamos horizontales. Ahora miramos Beta.
-            // Beta ~ 0: Pantalla mirando al techo (Pass)
-            // Beta ~ 180: Pantalla mirando al suelo (Correct)
-
             if (absBeta < 40) {
                 handleAnswer('PASS'); // Mirando al techo
             } else if (absBeta > 140) {
@@ -112,6 +128,9 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
         setCardStatus(status);
         if (status === 'CORRECT') setScore(s => s + 1);
 
+        // Save Result
+        setResults(prev => [...prev, { word: words[currentIndex], status }]);
+
         // Delay for animation then next card
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
@@ -122,7 +141,7 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
                 setPhase('FINISHED');
             }
         }, 800);
-    }, [currentIndex, words.length]);
+    }, [currentIndex, words]); // Removed words.length dep, added words dep for safety
 
     // Background Color Logic
     const getBackgroundColor = () => {
@@ -130,9 +149,6 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
         if (cardStatus === 'PASS') return 'bg-red-600';
         return 'bg-blue-600';
     };
-
-    // Particles/Visuals could be added here or as a wrapper
-    // For now simple reliable CSS colors
 
     // Dynamic Font Sizing
     const getFontSize = (word: string) => {
@@ -179,6 +195,17 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
                         setPhase('PLAYING');
                     }}
                 >
+                    {currentActor && (
+                        <div className="mb-8 flex flex-col items-center gap-2">
+                            <div className="bg-white/20 p-3 rounded-full">
+                                <User size={32} />
+                            </div>
+                            <p className="text-lg font-bold uppercase tracking-widest text-cyan-300">
+                                Turno de {currentActor}
+                            </p>
+                        </div>
+                    )}
+
                     <h2 className="text-4xl font-game mb-4">PONLO EN TU FRENTE</h2>
                     <div className="animate-pulse mb-8">
                         <Smartphone size={80} className="mx-auto rotate-90" />
@@ -222,6 +249,12 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
                     <div className="absolute top-6 right-6 font-game text-2xl opacity-80">
                         PUNTOS: {score}
                     </div>
+
+                    {currentActor && (
+                        <div className="absolute bottom-6 font-game text-xl opacity-50 uppercase tracking-widest">
+                            Actor: {currentActor}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -230,29 +263,48 @@ const GameController = ({ words, topic, onExit, initialTime }: Props) => {
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-center z-10 bg-white/10 backdrop-blur-md rounded-3xl p-8 max-w-md w-full border border-white/20"
+                    className="flex flex-col items-center z-10 w-full max-w-md h-[90vh]"
                 >
-                    <h2 className="text-3xl font-game mb-2">JUEGO TERMINADO</h2>
-                    <p className="text-neutral-300 mb-6">{topic}</p>
+                    <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 w-full border border-white/20 flex flex-col h-full">
+                        <h2 className="text-3xl font-game mb-2 text-center">JUEGO TERMINADO</h2>
+                        <div className="text-6xl font-game mb-6 text-cyan-400 drop-shadow-lg text-center">
+                            {score} <span className="text-2xl text-white">pts</span>
+                        </div>
 
-                    <div className="text-8xl font-game mb-8 text-cyan-400 drop-shadow-lg">
-                        {score}
-                    </div>
+                        {/* RESULTS LIST */}
+                        <div className="flex-1 overflow-y-auto space-y-2 mb-6 pr-2">
+                            {results.map((res, idx) => (
+                                <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${res.status === 'CORRECT' ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/10 border border-red-500/10 opacity-60'}`}>
+                                    <span className="font-bold text-lg">{res.word}</span>
+                                    {res.status === 'CORRECT' ? <Check className="text-green-400" /> : <X className="text-red-400" />}
+                                </div>
+                            ))}
+                            {/* Show untracked words as skipped if time ran out? Optional */}
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={onExit} className="bg-neutral-800 p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-neutral-700 transition">
-                            <Home />
-                            Menú
-                        </button>
-                        <button onClick={() => {
-                            setCurrentIndex(0);
-                            setScore(0);
-                            setTimeLeft(initialTime); // Reset Timer
-                            setPhase('INSTRUCTIONS');
-                        }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition">
-                            <RotateCcw />
-                            Repetir
-                        </button>
+                        <div className="grid grid-cols-2 gap-4 mt-auto">
+                            <button onClick={onExit} className="bg-neutral-800 p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-neutral-700 transition">
+                                <Home />
+                                Menú
+                            </button>
+                            <button onClick={() => {
+                                setCurrentIndex(0);
+                                setScore(0);
+                                setResults([]);
+                                setTimeLeft(initialTime); // Reset Timer
+
+                                // Rotate Actor if multiple players
+                                if (playerNames.length > 0) {
+                                    const nextIdx = (playerNames.indexOf(currentActor) + 1) % playerNames.length;
+                                    setCurrentActor(playerNames[nextIdx]);
+                                }
+
+                                setPhase('INSTRUCTIONS');
+                            }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition">
+                                <RotateCcw />
+                                Cambiar Turno
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             )}
