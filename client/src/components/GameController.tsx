@@ -62,7 +62,7 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
     const [timeLeft, setTimeLeft] = useState(initialTime);
 
     // Sound Logic (Simple Beep)
-    const playBeep = (freq = 440, type: OscillatorType = 'sine') => {
+    const playBeep = (freq = 440, type: 'sine' | 'square' | 'sawtooth' | 'triangle' = 'sine') => {
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
