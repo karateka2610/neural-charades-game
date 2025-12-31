@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Play, Sparkles, Clock, Users, Plus, X, Trophy } from 'lucide-react';
+import { BrainCircuit, Play, Sparkles, Clock, Users, Plus, X } from 'lucide-react';
 import { PRESETS } from '../data/PRESETS';
 import { useState } from 'react';
-import { Team } from '../App';
+import type { Team } from '../App';
 
 interface Props {
     onStart: (words?: string[], topic?: string) => void;
