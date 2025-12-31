@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Home, Smartphone, Check, X, User } from 'lucide-react';
+import { RotateCcw, Home, Smartphone, Check, X, User, Trophy } from 'lucide-react';
 import { useGyroscope } from '../hooks/useGyroscope';
+import type { Team } from '../App';
 
 interface Props {
     words: string[];
     topic: string;
     onExit: () => void;
+    onGameEnd: (score: number) => void;
     initialTime: number;
     playerNames: string[];
+    currentTeam: Team;
 }
 
 type GamePhase = 'PERMISSION' | 'INSTRUCTIONS' | 'PLAYING' | 'FINISHED';
@@ -19,7 +22,7 @@ interface GameResult {
     status: 'CORRECT' | 'PASS';
 }
 
-const GameController = ({ words, topic, onExit, initialTime, playerNames }: Props) => {
+const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNames, currentTeam }: Props) => {
     const { orientation, permission, requestAccess } = useGyroscope();
     const [phase, setPhase] = useState<GamePhase>('PERMISSION');
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,16 +31,6 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
     const [cardStatus, setCardStatus] = useState<CardStatus>('NEUTRAL');
     const [lastActionTime, setLastActionTime] = useState(0);
 
-    // Determines current actor based on round index if names exist
-    // Each game session is one turn? Or rotation happens within game?
-    // Let's assume the game is for ONE actor. The actor is the one holding the phone.
-    // If we want rotation, we need to know WHICH game number this is? 
-    // Or simpler: We display WHO should hold the phone at the start?
-    // Let's pick a random player or next in sequence?
-    // For simplicity: Just pick a random player name to display as "Actor" if available.
-    // OR: Assume user wants to say "Turno de X". 
-    // Let's pick a random one for now to keep it stateless between matches unless we lift state.
-    // Actually, simple standard: Pick random name at start.
     const [currentActor, setCurrentActor] = useState('');
 
     useEffect(() => {
@@ -61,21 +54,89 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
 
     const [timeLeft, setTimeLeft] = useState(initialTime);
 
-    // Sound Logic (Simple Beep)
-    const playBeep = (freq = 440, type: 'sine' | 'square' | 'sawtooth' | 'triangle' = 'sine') => {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+    // --- PRO AUDIO ENGINE ---
+    const audioCtxRef = useRef<AudioContext | null>(null);
 
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime); // Hz
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    const initAudio = () => {
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+    };
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.5);
+    const playSound = (type: 'CORRECT' | 'PASS' | 'TICK' | 'FINISH') => {
+        initAudio();
+        const ctx = audioCtxRef.current!;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+
+        if (type === 'CORRECT') {
+            // Coin Sound: High pitch jump
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, now);
+            osc.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+        else if (type === 'PASS') {
+            // Error Sound: Low sawtooth slide down
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+        else if (type === 'TICK') {
+            // Clock tick warning
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+        else if (type === 'FINISH') {
+            // Time's up whistle
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.linearRampToValueAtTime(400, now + 0.5);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
+
+            // Add a second harmonic for dissonance
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(805, now); // Slight detune
+            osc2.frequency.linearRampToValueAtTime(395, now + 0.5);
+            gain2.gain.setValueAtTime(0.1, now);
+            gain2.gain.exponentialRampToValueAtTime(0.01, now + 1);
+
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now);
+            osc2.stop(now + 1);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 1);
+            return; // Already connected
+        }
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+    };
+
+    // --- HAPTICS ---
+    const triggerHaptic = (pattern: number[]) => {
+        if (navigator.vibrate) {
+            navigator.vibrate(pattern);
+        }
     };
 
     // Timer Logic
@@ -83,12 +144,14 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
         if (phase !== 'PLAYING') return;
         if (timeLeft <= 0) {
             setPhase('FINISHED');
-            playBeep(200, 'sawtooth'); // Finish sound
+            playSound('FINISH');
+            triggerHaptic([200, 100, 200]);
             return;
         }
 
         if (timeLeft <= 10) {
-            playBeep(800 + (10 - timeLeft) * 100); // Pitch goes up
+            playSound('TICK');
+            triggerHaptic([30]);
         }
 
         const timer = setInterval(() => {
@@ -113,7 +176,6 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
         const absGamma = Math.abs(gamma);
         const absBeta = Math.abs(beta);
 
-        // Lógica Robusta:
         if (absGamma < 40) {
             if (absBeta < 40) {
                 handleAnswer('PASS'); // Mirando al techo
@@ -126,7 +188,14 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
 
     const handleAnswer = useCallback((status: 'CORRECT' | 'PASS') => {
         setCardStatus(status);
-        if (status === 'CORRECT') setScore(s => s + 1);
+        if (status === 'CORRECT') {
+            setScore(s => s + 1);
+            playSound('CORRECT');
+            triggerHaptic([50]);
+        } else {
+            playSound('PASS');
+            triggerHaptic([30, 50, 30]);
+        }
 
         // Save Result
         setResults(prev => [...prev, { word: words[currentIndex], status }]);
@@ -139,15 +208,17 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                 setLastActionTime(Date.now());
             } else {
                 setPhase('FINISHED');
+                playSound('FINISH');
+                triggerHaptic([200, 100, 200]);
             }
         }, 800);
-    }, [currentIndex, words]); // Removed words.length dep, added words dep for safety
+    }, [currentIndex, words]);
 
     // Background Color Logic
     const getBackgroundColor = () => {
         if (cardStatus === 'CORRECT') return 'bg-green-600';
         if (cardStatus === 'PASS') return 'bg-red-600';
-        return 'bg-blue-600';
+        return currentTeam.bgColor; // Use Team Color Base
     };
 
     // Dynamic Font Sizing
@@ -175,6 +246,7 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                     <button
                         onClick={() => {
                             handlePermissionRequest();
+                            initAudio(); // Prepare Audio Context
                             toggleFullScreen();
                         }}
                         className="bg-white text-blue-600 px-8 py-3 rounded-full font-bold text-xl active:scale-95 transition-transform"
@@ -192,16 +264,23 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                     className="text-center z-10"
                     onClick={() => {
                         toggleFullScreen();
+                        initAudio();
                         setPhase('PLAYING');
                     }}
                 >
+                    <div className="mb-4">
+                        <span className={`text-xl font-bold uppercase tracking-widest ${currentTeam.color} bg-white/10 px-4 py-1 rounded-full`}>
+                            {currentTeam.name}
+                        </span>
+                    </div>
+
                     {currentActor && (
-                        <div className="mb-8 flex flex-col items-center gap-2">
+                        <div className="mb-6 flex flex-col items-center gap-2">
                             <div className="bg-white/20 p-3 rounded-full">
                                 <User size={32} />
                             </div>
                             <p className="text-lg font-bold uppercase tracking-widest text-cyan-300">
-                                Turno de {currentActor}
+                                Actor: {currentActor}
                             </p>
                         </div>
                     )}
@@ -247,14 +326,12 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                         {timeLeft}s
                     </div>
                     <div className="absolute top-6 right-6 font-game text-2xl opacity-80">
-                        PUNTOS: {score}
+                        SCORE: {score}
                     </div>
 
-                    {currentActor && (
-                        <div className="absolute bottom-6 font-game text-xl opacity-50 uppercase tracking-widest">
-                            Actor: {currentActor}
-                        </div>
-                    )}
+                    <div className="absolute bottom-6 font-game text-xl opacity-50 uppercase tracking-widest">
+                        {currentTeam.name} {currentActor ? `• ${currentActor}` : ''}
+                    </div>
                 </div>
             )}
 
@@ -268,8 +345,12 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                     <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 w-full border border-white/20 flex flex-col h-full">
                         <h2 className="text-3xl font-game mb-2 text-center">JUEGO TERMINADO</h2>
                         <p className="text-neutral-400 text-center mb-4 uppercase tracking-wider text-sm">{topic}</p>
-                        <div className="text-6xl font-game mb-6 text-cyan-400 drop-shadow-lg text-center">
-                            {score} <span className="text-2xl text-white">pts</span>
+
+                        <div className="text-6xl font-game mb-2 text-center text-white drop-shadow-lg">
+                            {score} <span className="text-2xl">pts</span>
+                        </div>
+                        <div className={`text-center mb-6 font-bold uppercase tracking-widest ${currentTeam.color}`}>
+                            Puntos para {currentTeam.name}
                         </div>
 
                         {/* RESULTS LIST */}
@@ -280,7 +361,6 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                                     {res.status === 'CORRECT' ? <Check className="text-green-400" /> : <X className="text-red-400" />}
                                 </div>
                             ))}
-                            {/* Show untracked words as skipped if time ran out? Optional */}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mt-auto">
@@ -289,21 +369,10 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                                 Menú
                             </button>
                             <button onClick={() => {
-                                setCurrentIndex(0);
-                                setScore(0);
-                                setResults([]);
-                                setTimeLeft(initialTime); // Reset Timer
-
-                                // Rotate Actor if multiple players
-                                if (playerNames.length > 0) {
-                                    const nextIdx = (playerNames.indexOf(currentActor) + 1) % playerNames.length;
-                                    setCurrentActor(playerNames[nextIdx]);
-                                }
-
-                                setPhase('INSTRUCTIONS');
-                            }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition">
-                                <RotateCcw />
-                                Cambiar Turno
+                                onGameEnd(score); // Commit score and exit
+                            }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition animate-pulse">
+                                <Trophy />
+                                Continuar
                             </button>
                         </div>
                     </div>
@@ -312,5 +381,3 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
         </div>
     );
 };
-
-export default GameController;
