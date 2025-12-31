@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Home, Smartphone, Check, X, User, Trophy } from 'lucide-react';
+import { Home, Smartphone, Check, X, User, Trophy } from 'lucide-react';
 import { useGyroscope } from '../hooks/useGyroscope';
 import type { Team } from '../App';
 
