@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Play, Sparkles, Clock, Users, Plus, X } from 'lucide-react';
+import { BrainCircuit, Play, Sparkles, Clock, Users, Plus, X, Trophy } from 'lucide-react';
 import { PRESETS } from '../data/PRESETS';
 import { useState } from 'react';
+import { Team } from '../App';
 
 interface Props {
     onStart: (words?: string[], topic?: string) => void;
@@ -9,9 +10,11 @@ interface Props {
     setGameDuration: (duration: number) => void;
     playerNames: string[];
     setPlayerNames: (names: string[]) => void;
+    teams: Team[];
+    currentTeamTurn: 1 | 2;
 }
 
-const MainMenu = ({ onStart, gameDuration, setGameDuration, playerNames, setPlayerNames }: Props) => {
+const MainMenu = ({ onStart, gameDuration, setGameDuration, playerNames, setPlayerNames, teams, currentTeamTurn }: Props) => {
     const [newName, setNewName] = useState('');
 
     // Función simple para barajar array (Fisher-Yates)
@@ -40,23 +43,42 @@ const MainMenu = ({ onStart, gameDuration, setGameDuration, playerNames, setPlay
     const timeOptions = [30, 60, 90, 120];
 
     return (
-        <div className="flex flex-col items-center justify-center h-full bg-neutral-950 p-6 overflow-y-auto">
+        <div className="flex flex-col items-center justify-center h-full bg-neutral-950 p-6 overflow-y-auto w-full">
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
-                className="text-center mb-8 mt-6"
+                className="text-center mb-6 mt-4"
             >
-                <div className="flex justify-center mb-4">
-                    <BrainCircuit size={48} className="text-white opacity-80" />
+                <div className="flex justify-center mb-2">
+                    <BrainCircuit size={40} className="text-white opacity-80" />
                 </div>
-                <h1 className="text-4xl font-bold tracking-tighter text-white font-game mb-2">
+                <h1 className="text-3xl font-bold tracking-tighter text-white font-game mb-1">
                     NEURAL CHARADES
                 </h1>
-                <p className="text-neutral-500 text-sm font-light tracking-widest uppercase">
-                    Minimalist AI Party Game
-                </p>
             </motion.div>
+
+            {/* SCOREBOARD */}
+            <div className="flex w-full max-w-sm gap-4 mb-8">
+                {teams.map((team) => (
+                    <motion.div
+                        key={team.id}
+                        animate={{
+                            scale: currentTeamTurn === team.id ? 1.05 : 0.95,
+                            opacity: currentTeamTurn === team.id ? 1 : 0.5
+                        }}
+                        className={`flex-1 rounded-2xl p-4 flex flex-col items-center border-2 ${currentTeamTurn === team.id ? 'border-white bg-white/10' : 'border-transparent bg-white/5'}`}
+                    >
+                        <span className={`text-sm font-bold uppercase tracking-widest ${team.color}`}>{team.name}</span>
+                        <span className="text-4xl font-game mt-1">{team.score}</span>
+                        {currentTeamTurn === team.id && (
+                            <div className="mt-2 text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-bold uppercase tracking-wide animate-pulse">
+                                TU TURNO
+                            </div>
+                        )}
+                    </motion.div>
+                ))}
+            </div>
 
             <div className="w-full max-w-sm space-y-8 mb-10">
 
