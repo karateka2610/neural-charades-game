@@ -8,6 +8,8 @@ export type GameState = 'MENU' | 'CREATE_DECK' | 'PLAYING';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
+  const [currentDeck, setCurrentDeck] = useState<string[]>([]);
+  const [deckTopic, setDeckTopic] = useState<string>('');
   const [gameDuration, setGameDuration] = useState<number>(60);
 
   const startGame = (words: string[], topic: string) => {
