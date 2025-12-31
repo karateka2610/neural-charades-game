@@ -267,6 +267,7 @@ const GameController = ({ words, topic, onExit, initialTime, playerNames }: Prop
                 >
                     <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 w-full border border-white/20 flex flex-col h-full">
                         <h2 className="text-3xl font-game mb-2 text-center">JUEGO TERMINADO</h2>
+                        <p className="text-neutral-400 text-center mb-4 uppercase tracking-wider text-sm">{topic}</p>
                         <div className="text-6xl font-game mb-6 text-cyan-400 drop-shadow-lg text-center">
                             {score} <span className="text-2xl text-white">pts</span>
                         </div>
