@@ -111,6 +111,19 @@ const GameController = ({ words, topic, onExit }: Props) => {
     // Particles/Visuals could be added here or as a wrapper
     // For now simple reliable CSS colors
 
+    // Dynamic Font Sizing
+    const getFontSize = (word: string) => {
+        if (word.length > 12) return 'text-5xl md:text-6xl';
+        if (word.length > 8) return 'text-6xl md:text-7xl';
+        return 'text-7xl md:text-8xl';
+    };
+
+    const toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(e => console.log(e));
+        }
+    };
+
     return (
         <div className={`w-full h-full transition-colors duration-300 ${getBackgroundColor()} flex flex-col items-center justify-center p-4 relative overflow-hidden`}>
 
@@ -121,7 +134,10 @@ const GameController = ({ words, topic, onExit }: Props) => {
                     <h2 className="text-2xl font-bold mb-4 font-game">HABILITAR GIROSCOPIO</h2>
                     <p className="mb-8 opacity-80">Necesitamos sensores de movimiento para detectar tus gestos.</p>
                     <button
-                        onClick={handlePermissionRequest}
+                        onClick={() => {
+                            handlePermissionRequest();
+                            toggleFullScreen();
+                        }}
                         className="bg-white text-blue-600 px-8 py-3 rounded-full font-bold text-xl active:scale-95 transition-transform"
                     >
                         PERMITIR ACCESO
@@ -135,7 +151,10 @@ const GameController = ({ words, topic, onExit }: Props) => {
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="text-center z-10"
-                    onClick={() => setPhase('PLAYING')}
+                    onClick={() => {
+                        toggleFullScreen();
+                        setPhase('PLAYING');
+                    }}
                 >
                     <h2 className="text-4xl font-game mb-4">PONLO EN TU FRENTE</h2>
                     <div className="animate-pulse mb-8">
@@ -163,7 +182,7 @@ const GameController = ({ words, topic, onExit }: Props) => {
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             className="bg-white text-black rounded-3xl p-8 w-full max-w-lg aspect-[4/3] flex items-center justify-center shadow-2xl text-center"
                         >
-                            <h1 className="text-7xl md:text-8xl font-game uppercase leading-none tracking-tighter break-words max-w-full">
+                            <h1 className={`${getFontSize(words[currentIndex])} font-game uppercase leading-none tracking-tighter break-words max-w-full`}>
                                 {words[currentIndex]}
                             </h1>
                         </motion.div>
