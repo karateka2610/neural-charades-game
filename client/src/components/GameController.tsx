@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Smartphone, Check, X, User, Trophy } from 'lucide-react';
 import { useGyroscope } from '../hooks/useGyroscope';
@@ -154,7 +155,7 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
         }
 
         const timer = setInterval(() => {
-            setTimeLeft(t => t - 1);
+            setTimeLeft((t: number) => t - 1);
         }, 1000);
 
         return () => clearInterval(timer);
@@ -188,7 +189,7 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
     const handleAnswer = useCallback((status: 'CORRECT' | 'PASS') => {
         setCardStatus(status);
         if (status === 'CORRECT') {
-            setScore(s => s + 1);
+            setScore((s: number) => s + 1);
             playSound('CORRECT');
             triggerHaptic([50]);
         } else {
@@ -202,7 +203,7 @@ const GameController = ({ words, topic, onExit, onGameEnd, initialTime, playerNa
         // Delay for animation then next card
         setTimeout(() => {
             if (currentIndex < words.length - 1) {
-                setCurrentIndex(i => i + 1);
+                setCurrentIndex((i: number) => i + 1);
                 setCardStatus('NEUTRAL');
                 setLastActionTime(Date.now());
             } else {
