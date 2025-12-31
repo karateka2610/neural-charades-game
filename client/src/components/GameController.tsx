@@ -7,12 +7,13 @@ interface Props {
     words: string[];
     topic: string;
     onExit: () => void;
+    initialTime: number;
 }
 
 type GamePhase = 'PERMISSION' | 'INSTRUCTIONS' | 'PLAYING' | 'FINISHED';
 type CardStatus = 'NEUTRAL' | 'CORRECT' | 'PASS';
 
-const GameController = ({ words, topic, onExit }: Props) => {
+const GameController = ({ words, topic, onExit, initialTime }: Props) => {
     const { orientation, permission, requestAccess } = useGyroscope();
     const [phase, setPhase] = useState<GamePhase>('PERMISSION');
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,14 +33,36 @@ const GameController = ({ words, topic, onExit }: Props) => {
         await requestAccess();
     };
 
-    const [timeLeft, setTimeLeft] = useState(60);
+    const [timeLeft, setTimeLeft] = useState(initialTime);
+
+    // Sound Logic (Simple Beep)
+    const playBeep = (freq = 440, type: OscillatorType = 'sine') => {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime); // Hz
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    };
 
     // Timer Logic
     useEffect(() => {
         if (phase !== 'PLAYING') return;
         if (timeLeft <= 0) {
             setPhase('FINISHED');
+            playBeep(200, 'sawtooth'); // Finish sound
             return;
+        }
+
+        if (timeLeft <= 10) {
+            playBeep(800 + (10 - timeLeft) * 100); // Pitch goes up
         }
 
         const timer = setInterval(() => {
@@ -224,7 +247,7 @@ const GameController = ({ words, topic, onExit }: Props) => {
                         <button onClick={() => {
                             setCurrentIndex(0);
                             setScore(0);
-                            setTimeLeft(60); // Reset Timer
+                            setTimeLeft(initialTime); // Reset Timer
                             setPhase('INSTRUCTIONS');
                         }} className="bg-cyan-500 text-black p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-cyan-400 transition">
                             <RotateCcw />
